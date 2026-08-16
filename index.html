@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내전 밸런서 2.0</title>
+<style>
+  :root {
+    --bg: #0a101a;
+    --panel: #121b29;
+    --panel-2: #172233;
+    --line: #263349;
+    --line-soft: #1d2839;
+    --gold: #c8aa6e;
+    --gold-dim: #8a7a52;
+    --text: #e9e4d9;
+    --muted: #8b96a5;
+    --blue: #4c9be0;
+    --blue-deep: #16334e;
+    --red: #e0635c;
+    --red-deep: #46232a;
+    --danger: #e0635c;
+    --warn: #e0a33c; /* 경고 전용(오프 포지션 등) — 팀 빨강과 역할 분리 */
+    --ok: #58c98a;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1100px 500px at 50% -150px, rgba(200,170,110,0.07), transparent 70%),
+      var(--bg);
+    color: var(--text);
+    font-family: 'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1220px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  header.top { text-align: center; margin-bottom: 26px; }
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.28em; color: var(--gold-dim);
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  h1 {
+    margin: 0; font-size: 30px; font-weight: 800; letter-spacing: 0.02em;
+    color: var(--gold); text-wrap: balance;
+  }
+  .sub { color: var(--muted); font-size: 13.5px; margin-top: 6px; }
+
+  .layout { display: grid; grid-template-columns: 330px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px;
+  }
+  .panel h2 {
+    margin: 0 0 10px; font-size: 13px; letter-spacing: 0.14em; color: var(--gold);
+    text-transform: uppercase; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  textarea {
+    /* 12줄이 기본으로 보이게: 13.5px × 1.7 × 12줄 + 패딩·테두리 */
+    width: 100%; min-height: 300px; resize: vertical;
+    background: #0d1420; color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; font-size: 13.5px; line-height: 1.7;
+    font-family: inherit;
+  }
+  textarea:focus { outline: 2px solid var(--gold-dim); outline-offset: 1px; border-color: var(--gold-dim); }
+  .hint { color: var(--muted); font-size: 12px; margin: 8px 0 10px; line-height: 1.6; }
+  .hint b { color: var(--text); font-weight: 600; }
+
+  button {
+    font-family: inherit; cursor: pointer; border-radius: 8px; font-size: 13.5px;
+    padding: 9px 14px; border: 1px solid var(--line); background: var(--panel-2);
+    color: var(--text); transition: background .15s, border-color .15s, transform .05s;
+  }
+  button:hover { border-color: var(--gold-dim); }
+  button:active { transform: translateY(1px); }
+  button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  button.primary {
+    background: linear-gradient(180deg, #d9bc80, #b3945a); color: #1a1408;
+    border-color: #a08347; font-weight: 700;
+  }
+  button.primary:hover { background: linear-gradient(180deg, #e5c98d, #bd9e63); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* 명단 */
+  .roster { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .roster-row {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 8px;
+    padding: 7px 10px; font-size: 13px;
+  }
+  .roster-row.off { opacity: .38; }
+  .roster-row .name { font-weight: 700; min-width: 52px; }
+  .roster-row .score { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+  .roster-row .toggle { padding: 3px 8px; font-size: 11px; border-radius: 6px; flex-shrink: 0; }
+  .count-line { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+  .count-line .bad { color: var(--danger); font-weight: 700; }
+  .count-line .good { color: var(--ok); font-weight: 700; }
+
+  .tier {
+    display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: 11.5px;
+    font-weight: 700; letter-spacing: 0.02em; flex-shrink: 0;
+    /* 티어 색은 글자에만 — 밝은 색 테두리를 걷어내 화면 소음을 줄인다 */
+    background: #0d1420; border: 1px solid var(--line-soft);
+    width: 74px; text-align: center; box-sizing: border-box; /* 고정 폭으로 티어 열 정렬 */
+  }
+  .poslist { color: var(--muted); font-size: 11.5px; letter-spacing: 0.02em; }
+
+  /* 팀 점수 */
+  .scorebar { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+  .scorebar .team-name { font-size: 13px; font-weight: 800; letter-spacing: 0.05em; }
+  .scorebar .team-name.b { color: var(--blue); }
+  .scorebar .team-name.r { color: var(--red); }
+  .scorebar .team-score {
+    font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 76px;
+  }
+  .scorebar .team-score.b { color: var(--blue); text-align: right; }
+  .scorebar .team-score.r { color: var(--red); }
+  .meter { flex: 1; height: 8px; border-radius: 4px; background: var(--line-soft); overflow: hidden; display: flex; }
+  .meter .fb { background: var(--blue); height: 100%; transition: width .3s; }
+  .meter .fr { background: var(--red); height: 100%; transition: width .3s; }
+  .diffnote { text-align: center; color: var(--muted); font-size: 12.5px; margin: 0 0 16px; }
+  .diffnote b { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  /* 대진표: 블루 슬롯 | 라인·유불리 | 레드 슬롯 */
+  .matchup { display: grid; grid-template-columns: 1fr 104px 1fr; gap: 8px; align-items: stretch; }
+  .team-head {
+    padding: 9px 14px; font-weight: 800; font-size: 13.5px; letter-spacing: 0.06em;
+    display: flex; align-items: center; gap: 8px; border-radius: 8px;
+  }
+  .team-head.blue { background: linear-gradient(180deg, #1a3a5c, var(--blue-deep)); color: #bcdcf7; }
+  .team-head.red  { background: linear-gradient(180deg, #5c2a30, var(--red-deep)); color: #f3c3bf; justify-content: flex-end; }
+  .team-head .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .team-head.blue .dot { background: var(--blue); }
+  .team-head.red .dot { background: var(--red); }
+  .vs-cell { display: flex; align-items: center; justify-content: center; }
+  .swap-btn {
+    padding: 7px 8px; font-size: 12px; font-weight: 700; white-space: nowrap;
+    color: var(--gold); border-color: var(--gold-dim);
+  }
+  .swap-btn:hover { background: rgba(200,170,110,0.12); }
+
+  .mid-cell {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    background: #0d1420; border: 1px solid var(--line-soft); border-radius: 8px; padding: 4px 2px;
+    cursor: pointer; transition: border-color .15s;
+  }
+  .mid-cell:hover { border-color: var(--gold-dim); }
+  .mid-cell .cond-tag {
+    font-size: 10px; padding: 0 5px; border-radius: 4px; border: 1px solid currentColor;
+  }
+
+  /* 라인 클릭 의도 메뉴 */
+  .lanemenu {
+    position: fixed; z-index: 60; background: var(--panel-2); border: 1px solid var(--gold-dim);
+    border-radius: 8px; padding: 6px; display: none; flex-direction: column; gap: 2px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 180px;
+  }
+  .lanemenu.show { display: flex; }
+  .lanemenu .lm-title {
+    font-size: 11px; color: var(--gold-dim); letter-spacing: 0.1em; padding: 2px 8px 4px; font-weight: 700;
+  }
+  .lanemenu button {
+    border: 0; background: transparent; text-align: left; padding: 7px 10px;
+    border-radius: 6px; font-size: 12.5px;
+  }
+  .lanemenu button:hover { background: rgba(200,170,110,0.12); }
+  .lanemenu button.cur { background: rgba(200,170,110,0.18); color: var(--gold); }
+  .mid-cell .lane-name { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--gold-dim); }
+  .adv { font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.2; text-align: center; }
+  .adv.b { color: var(--blue); }
+  .adv.r { color: var(--red); }
+  .adv.even { color: var(--muted); font-weight: 600; }
+
+  .slot {
+    min-height: 54px; border: 1px dashed var(--line); border-radius: 8px;
+    display: flex; align-items: center; padding: 4px;
+    transition: border-color .15s, background .15s;
+  }
+  .slot.hover { border-color: var(--gold); background: rgba(200,170,110,0.06); }
+  .slot:empty::after { content: "비어 있음"; color: #4a5566; font-size: 12px; padding-left: 10px; }
+  /* 1팀 카드는 가운데(VS)를 향해 거울 정렬 */
+  .slot[data-slot^="B:"] .card { flex-direction: row-reverse; }
+  .slot[data-slot^="B:"]:empty { justify-content: flex-end; }
+  .slot[data-slot^="B:"]:empty::after { padding-left: 0; padding-right: 10px; }
+
+  .card {
+    flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px;
+    padding: 7px 10px; cursor: grab; user-select: none; font-size: 13px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .card:hover { border-color: var(--gold-dim); }
+  .card.selected { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(200,170,110,0.35); }
+  .card.dragging { opacity: .4; }
+  .card .name { font-weight: 700; }
+  /* 주/부 표시도 내용 덩어리에 붙여서 카드 내용이 한 곳에 모이게 (빈 공간은 바깥쪽 한 곳으로) */
+  .card .fit { font-size: 11px; flex-shrink: 0; }
+  .fit.main { color: var(--gold); }
+  .fit.sub2 { color: var(--muted); }
+  .fit.offrole { color: var(--danger); font-weight: 700; }
+  .card.offrole-card { border-color: rgba(224,99,92,0.55); }
+
+  /* 대기석: 한 줄 슬림 구조 */
+  .bench-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .bench-label {
+    font-size: 12px; color: var(--gold-dim); font-weight: 700;
+    letter-spacing: 0.08em; flex-shrink: 0;
+  }
+  .bench {
+    flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    min-height: 38px; border: 1px dashed var(--line); border-radius: 8px; padding: 4px 8px;
+  }
+  .bench:empty::after { content: "비어 있음 — 카드를 끌어다 놓으면 뺄 수 있습니다"; color: #4a5566; font-size: 11.5px; }
+  .bench .card { flex: 0 0 auto; padding: 5px 9px; }
+
+  /* 팀 배치 조건: 배치 방침 + 메타 중요도를 한 표로 */
+  .cond-box {
+    border: 1px solid var(--line-soft); border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 14px; overflow-x: auto;
+  }
+  .cond-grid {
+    display: grid; grid-template-columns: max-content repeat(5, minmax(78px, 1fr));
+    gap: 6px 8px; align-items: center; min-width: 520px;
+  }
+  .cond-grid .lane-h {
+    text-align: center; font-size: 11.5px; font-weight: 700;
+    letter-spacing: 0.08em; color: var(--gold-dim);
+  }
+  .cond-grid .row-h { font-size: 12px; color: var(--muted); white-space: nowrap; padding-right: 4px; }
+  .cond-grid .row-sub { display: block; font-size: 10.5px; color: #5a6678; }
+  .cond-grid select {
+    width: 100%; background: #0d1420; color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px 5px; font-size: 12px; font-family: inherit; cursor: pointer;
+  }
+  .cond-grid select:focus { outline: 2px solid var(--gold-dim); outline-offset: 1px; }
+  .cond-grid option { background: #0d1420; color: var(--text); }
+  .cond-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .cond-foot .capline { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); margin-left: 12px; }
+  .cond-foot .capline:first-of-type { margin-left: auto; }
+  .cond-foot .capline .hint-inline { font-size: 11px; color: #5a6678; }
+  .cond-foot .capline select {
+    background: #0d1420; color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px 6px; font-size: 12px; font-family: inherit; cursor: pointer;
+  }
+
+  /* 자동완성: 커서 위치 옆에 표시 */
+  .ta-wrap { position: relative; }
+  .ta-mirror {
+    position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none;
+    white-space: pre-wrap; overflow-wrap: break-word; overflow: hidden;
+  }
+  /* 고스트 텍스트: 입력 중인 글자 뒤에 나머지를 톤 다운으로 미리 보여주고 Tab으로 채택 */
+  .ghost {
+    position: absolute; z-index: 5; display: none; pointer-events: none;
+    font-size: 13.5px; line-height: 1.7; font-family: inherit;
+    color: #56637a; white-space: pre;
+  }
+
+  /* 저장된 명단 */
+  .saverow { display: flex; gap: 8px; margin-bottom: 10px; }
+  .saverow input {
+    flex: 1; min-width: 0; background: #0d1420; border: 1px solid var(--line);
+    border-radius: 8px; color: var(--text); padding: 8px 10px; font-size: 13px; font-family: inherit;
+  }
+  .saverow input:focus { outline: 2px solid var(--gold-dim); outline-offset: 1px; border-color: var(--gold-dim); }
+  .savedlist { display: flex; flex-direction: column; gap: 6px; }
+  .savedlist:empty::after { content: "저장된 명단이 없습니다"; color: #4a5566; font-size: 12px; }
+  .saved-row {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 8px;
+    padding: 7px 10px; font-size: 13px;
+  }
+  .saved-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .saved-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .saved-meta { color: var(--muted); font-size: 11.5px; }
+  .saved-row button { padding: 5px 9px; font-size: 12px; flex-shrink: 0; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(8px);
+    background: #1e2a3d; border: 1px solid var(--gold-dim); color: var(--text);
+    border-radius: 8px; padding: 10px 18px; font-size: 13px; opacity: 0;
+    pointer-events: none; transition: opacity .25s, transform .25s; z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .tip { color: var(--muted); font-size: 12px; margin-top: 12px; line-height: 1.7; }
+  .tip b { color: var(--text); }
+  .calc-doc { margin-top: 8px; }
+  .calc-doc summary { font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; }
+  .calc-doc summary:hover, .calc-doc[open] summary { color: var(--gold); }
+  .calc-doc .tip { margin-top: 6px; }
+  .diffnote .subnote { font-size: 11px; color: #5a6678; margin-top: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  /* 대형 화면(QHD·4K, OS 배율 100%)에서 UI가 작아 보이지 않게 자동 확대 */
+  @media (min-width: 2400px) { body { zoom: 1.25; } }
+  @media (min-width: 3200px) { body { zoom: 1.5; } }
+  @media (max-width: 640px) {
+    .matchup { grid-template-columns: 1fr 72px 1fr; }
+    .card { font-size: 12px; padding: 6px 8px; }
+    .poslist { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Custom Match Balancer</div>
+    <h1>내전 밸런서 <span style="font-size:0.6em;color:var(--gold-dim);vertical-align:middle">2.0</span></h1>
+    <div class="sub">명단을 붙여넣으면 티어·포지션을 읽어 두 팀을 자동으로 맞춰 줍니다</div>
+  </header>
+
+  <div class="layout">
+    <section class="panel">
+      <h2>참가자 명단</h2>
+      <div class="ta-wrap">
+        <textarea id="input" spellcheck="false"></textarea>
+        <div class="ghost" id="ghost"></div>
+      </div>
+      <div class="hint">
+        한 줄에 한 명: <b>이름 티어 포지션…</b> (공백으로만 써도 되고, — 나 - 구분자가 섞여 있어도 읽습니다)<br>
+        티어: 아이언~챌린저 줄임말(<b>아·브·실·골·플·에·다·마·그마·챌</b>)+숫자<br>
+        포지션은 <b>앞에 쓴 순서가 주 포지션</b>으로 계산됩니다<br>
+        <b>올라운더</b>라고 쓰거나 포지션을 비우면 모든 라인에 감점 없이 설 수 있습니다<br>
+        <b>"결과 복사"로 복사한 텍스트</b>를 붙여넣으면 명단과 배치가 그대로 복원됩니다
+      </div>
+      <div class="btnrow">
+        <button class="primary" id="btn-parse">명단 읽기</button>
+      </div>
+      <div class="roster" id="roster"></div>
+      <div class="count-line" id="countline"></div>
+
+      <h2 style="margin-top:20px">저장된 명단</h2>
+      <div class="hint" id="share-mode"></div>
+      <div class="saverow">
+        <input id="save-name" type="text" placeholder="명단 이름 (예: 8월 내전)" maxlength="30">
+        <button id="btn-save">저장</button>
+      </div>
+      <div class="savedlist" id="savedlist"></div>
+    </section>
+
+    <section>
+      <div class="panel">
+        <h2>팀 배치</h2>
+        <div class="btnrow" style="margin-bottom:16px">
+          <button class="primary" id="btn-auto">⚖ 자동 배치</button>
+          <button id="btn-next">다른 조합</button>
+          <button id="btn-clear">배치 초기화</button>
+          <button id="btn-copy">결과 복사</button>
+        </div>
+
+        <div class="scorebar">
+          <span class="team-name b">1팀</span>
+          <div class="team-score b" id="score-b">0</div>
+          <div class="meter"><div class="fb" id="meter-b" style="width:50%"></div><div class="fr" id="meter-r" style="width:50%"></div></div>
+          <div class="team-score r" id="score-r">0</div>
+          <span class="team-name r">2팀</span>
+        </div>
+        <div class="diffnote" id="diffnote"></div>
+
+        <div class="matchup" id="matchup"></div>
+
+        <div class="bench-row">
+          <span class="bench-label">대기석</span>
+          <div class="bench" id="bench"></div>
+        </div>
+
+        <h2 style="margin-top:20px">배치 조건</h2>
+        <div class="cond-box">
+          <div class="cond-grid">
+            <div class="row-h"></div>
+            <div class="lane-h">탑</div>
+            <div class="lane-h">정글</div>
+            <div class="lane-h">미드</div>
+            <div class="lane-h">원딜</div>
+            <div class="lane-h">서폿</div>
+            <div class="row-h">배치 방침<span class="row-sub">누굴 세울까</span></div>
+            <select data-opt="TOP"></select>
+            <select data-opt="JG"></select>
+            <select data-opt="MID"></select>
+            <select data-opt="ADC"></select>
+            <select data-opt="SUP"></select>
+            <div class="row-h">메타 중요도<span class="row-sub">격차 반영 비중</span></div>
+            <select data-meta="TOP"></select>
+            <select data-meta="JG"></select>
+            <select data-meta="MID"></select>
+            <select data-meta="ADC"></select>
+            <select data-meta="SUP"></select>
+          </div>
+          <div class="cond-foot">
+            <button type="button" id="meta-equal">중요도 균등</button>
+            <button type="button" id="meta-current">현재 메타 (26.16)</button>
+            <label class="capline">오프 포지션 <select id="off-limit"></select></label>
+            <label class="capline">라인 최대 승률 <select id="lane-cap"></select> <span class="hint-inline">(테스트)</span></label>
+          </div>
+          <div class="hint" style="margin:8px 0 0">
+            <b>배치 방침</b> — 자유: 조건 없음 · <b style="color:#57a99b">저티어</b>/<b style="color:#c9954f">고티어</b>: 그 라인에 팀 내 낮은/높은 티어를 우선 배치 · <b style="color:#b9a06b">맞밸런스</b>: 맞상대와 최대한 비슷한 티어로<br>
+            <b>메타 중요도</b> — 높을수록 그 라인 격차를 승률·자동 배치에 무겁게 반영 (<b style="color:#57a99b">1~2 낮음</b> · 3 보통 · <b style="color:#c9954f">4 높음</b> · <b style="color:#c4756e">5 최고</b>).
+            현재 메타 프리셋: 정글·원딜 4, 탑·서폿 2 — 패치 26.16(메이지 봇 메타, 정글 영향력 1위) 기준 추정
+          </div>
+        </div>
+        <div class="tip">
+          · <b>가운데 라인 칸을 클릭</b>하면 조건(공평하게/저티어/에이스)을 걸고 즉시 다시 배치됩니다<br>
+          · 카드를 <b>드래그</b>하거나 <b>클릭 후 다른 자리를 클릭</b>하면 자리를 바꿉니다 (대기석으로 빼기도 가능)<br>
+          · <span style="color:var(--gold)">주</span>·부·3순위 = 명단에 쓴 포지션 순서, <span style="color:var(--danger)">오프</span> = 명단에 없는 포지션
+        </div>
+        <details class="calc-doc">
+          <summary>계산 방식 자세히</summary>
+          <div class="tip">
+            · <b>전력 = 티어 점수 − 포지션 감점</b> (세부 티어 1칸 = 1pt · 부 −1 · 3순위 −2 · 오프 −4).
+            오프 포지션이 불가피한 명단에서는 <b>서폿 > 정글 > 탑 > 미드 > 원딜</b> 순으로,
+            같은 조건이면 <b>티어가 높은 사람부터</b> 오프에 세우고, 가능하면 <b>양 팀 오프 수를 맞춥니다</b>.
+            오프가 낀 맞라인의 우세 확률은 기복을 감안해 50% 쪽으로 더 완만하게 계산합니다<br>
+            · 자동 배치는 <b>예상 승률 53% 이내</b>를 최우선으로 지키고, 그 안에서 팀 전력 차·라인 대면 격차·에이스 격차를 최소화하며
+            배치 방침과 메타 중요도를 반영합니다 (53% 조합이 아예 없는 명단에서만 초과 허용)<br>
+            · 승률은 세부 티어 1칸 ≈ 100 MMR 환산 Elo 공식 기반이고, 팀 유불리에는 각 라인 격차를 <b>±8pt(두 티어)까지만 반영</b>합니다
+            — 이미 크게 터진 라인에 우위를 더 쌓아도 게임 영향은 늘지 않는다고 보기 때문입니다<br>
+            · 라인 칸의 %는 그 맞라인 <b>1대1 기준 우세 확률</b>(게임 승률 아님)이며, 챔피언 상성·정글 개입 같은 변수를 감안해
+            팀 승률보다 완만한 곡선으로 계산합니다. 기대 라인 승수는 라인별 우세 확률의 합입니다
+          </div>
+        </details>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="lanemenu" id="lanemenu"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>"use strict";let t=null;try{null}catch(e){t=null}const e=[{keys:["아이언","아"],label:"아이언",color:"#8d8d93",idx:0},{keys:["브론즈","브"],label:"브론즈",color:"#a46a48",idx:1},{keys:["실버","실"],label:"실버",color:"#9fa8b2",idx:2},{keys:["골드","골"],label:"골드",color:"#e6b84c",idx:3},{keys:["플래티넘","플래","플"],label:"플래",color:"#3fbda9",idx:4},{keys:["에메랄드","에메","에"],label:"에메랄드",color:"#2fbe6e",idx:5},{keys:["다이아몬드","다이아","다"],label:"다이아",color:"#5aa7e8",idx:6},{keys:["마스터","마"],label:"마스터",color:"#b26be8",idx:7,fixed:31},{keys:["그랜드마스터","그마"],label:"그마",color:"#e0564f",idx:8,fixed:36},{keys:["챌린저","챌"],label:"챌린저",color:"#f4c874",idx:9,fixed:41}],n=["TOP","JG","MID","ADC","SUP"],o={TOP:"탑",JG:"정글",MID:"미드",ADC:"원딜",SUP:"서폿"},s={"탑":"TOP","정글":"JG","정":"JG","미드":"MID","미":"MID","원딜":"ADC","바텀":"ADC","봇":"ADC","원":"ADC","바":"ADC","서폿":"SUP","서포터":"SUP","서포트":"SUP","폿":"SUP","서":"SUP"};let l=[],a=new Set,i={B:{TOP:null,JG:null,MID:null,ADC:null,SUP:null},R:{TOP:null,JG:null,MID:null,ADC:null,SUP:null}},r=[],c=0,d=null;const u={high:"고티어",mirror:"맞밸런스",low:"저티어",free:"자유"};let f={TOP:"free",JG:"free",MID:"free",ADC:"mirror",SUP:"low"};const p={1:.7,2:.85,3:1,4:1.15,5:1.3},m={1:"1 최저",2:"2 낮음",3:"3 보통",4:"4 높음",5:"5 최고"},h={TOP:2,JG:4,MID:3,ADC:4,SUP:2};let v={TOP:3,JG:3,MID:3,ADC:3,SUP:3};const g=t=>p[v[t]]||1;let b=0;let $=-1;function y(t){const n=t.match(/^([가-힣]+)([1-4])?$/);if(!n)return null;const o=e.find(t=>t.keys.includes(n[1]));if(!o)return null;const s=o.fixed?null:n[2]?parseInt(n[2],10):null;return{tier:o,div:s,score:o.fixed??4*o.idx+(s?5-s:2.5)}}function S(t){const e=[],n=[];return t.split(/\r?\n/).forEach(t=>{const o=t.trim();if(!o)return;const l=o.replace(/[—–\-:·,/]+/g," ").replace(/\s+/g," ").trim().split(" ");if(l.length<2)return void n.push(o);const a=l[0];let i=null;const r=[];for(let t=1;t<l.length;t++){const e=y(l[t]);if(e&&!i){i=e;continue}const n=s[l[t]];n&&!r.includes(n)&&r.push(n)}i?e.push({id:"p"+e.length+"_"+a,name:a,tierLabel:i.tier.label+(i.div??""),tierColor:i.tier.color,score:i.score,pos:r}):n.push(o)}),{out:e,errors:n}}function M(t,e){if(!t.pos.length)return 0;const n=t.pos.indexOf(e);return 0===n?0:1===n?1:n>=2?2:4}const L={SUP:13,JG:14,TOP:15,MID:16,ADC:17};function x(t,e){if(!t.pos.length)return 0;const n=t.pos.indexOf(e);return 0===n?0:1===n?1:n>=2?2:L[e]+.25*(20-t.score)}function D(t,e){return t.score-M(t,e)}function E(t,e,n){let o=800;return t.pos.length&&t.pos.indexOf(n)<0&&(o+=150),e.pos.length&&e.pos.indexOf(n)<0&&(o+=150),o}function w(t){return n.reduce((e,n)=>e+(i[t][n]?D(A(i[t][n]),n):0),0)}function C(t){let e=null;const o=s=>{if(5===s.length){let t=0,o=0;for(let e=0;e<5;e++)t+=x(s[e],n[e]),o+=M(s[e],n[e]);return void((!e||t<e.pen)&&(e={order:s.slice(),pen:t,malus:o}))}for(const e of t)s.includes(e)||(s.push(e),o(s),s.pop())};return o([]),e}const P=t=>Math.max(-8,Math.min(8,t));function k(t){const e=[],n=o=>{if(5!==o.length)for(const e of t)o.includes(e)||(o.push(e),n(o),o.pop());else e.push(o.slice())};return n([]),e}function T(){const t=l.filter(t=>a.has(t.id));if(10!==t.length)return[];const e=[],o=(s,l)=>{if(4===l.length){const o=[t[0],...l],s=t.filter(t=>!o.includes(t)),i=C(o).pen,r=C(s).pen,c=t=>t.reduce((t,e,o)=>t+x(e,n[o]),0),d=k(o).filter(t=>c(t)<=i+3),u=k(s).filter(t=>c(t)<=r+3),p=Math.min(...o.map(t=>t.score)),m=Math.min(...s.map(t=>t.score)),h=Math.max(...o.map(t=>t.score)),v=Math.max(...s.map(t=>t.score)),y=(a=b)?8*Math.log10(a/(100-a)):1/0;let S=null;for(const t of d)for(const e of u){let o=0,s=0,l=0,a=-1/0,i=-1/0,r=0,c=0,d=0,u=0,b=0;for(let $=0;$<5;$++){o+=x(t[$],n[$])+x(e[$],n[$]),t[$].pos.length&&t[$].pos.indexOf(n[$])<0&&u++,e[$].pos.length&&e[$].pos.indexOf(n[$])<0&&b++;const S=D(t[$],n[$]),M=D(e[$],n[$]),L=Math.abs(S-M);s+=P(S-M)*g(n[$]),l+=Math.max(0,L-4),d+=Math.max(0,L-y),a=Math.max(a,S),i=Math.max(i,M);const E=f[n[$]];"mirror"===E?r+=L:"low"===E?c+=Math.min(12,t[$].score-p)+Math.min(12,e[$].score-m):"high"===E&&(c+=Math.min(12,h-t[$].score)+Math.min(12,v-e[$].score))}const M=Math.abs(s),L=2*M+1.5*o+1.5*l+.5*Math.abs(a-i)+1*r+.4*c+10*d+3*Math.abs(u-b)+($>=0?40*Math.max(0,u+b-$):0)+20*Math.max(0,M-1.05);(!S||L<S.cost)&&(S={cost:L,blue:t.map(t=>t.id),red:e.map(t=>t.id)})}return void(S&&e.push(S))}var a;for(let e=s;e<9;e++)l.push(t[e+1]),o(e+1,l),l.pop()};return o(0,[]),e.sort((t,e)=>t.cost-e.cost),e.slice(0,15)}function I(t){i={B:{TOP:null,JG:null,MID:null,ADC:null,SUP:null},R:{TOP:null,JG:null,MID:null,ADC:null,SUP:null}},n.forEach((e,n)=>{i.B[e]=t.blue[n],i.R[e]=t.red[n]}),d=null,F()}const O=t=>document.getElementById(t),A=t=>l.find(e=>e.id===t);function B(t){return Number.isInteger(t)?String(t):t.toFixed(1)}function J(t){return`<span class="tier" style="color:${t.tierColor}">${t.tierLabel}</span>`}function R(t){return t.pos.length?t.pos.map(t=>o[t]).join("·"):"올라운더"}function j(){const t=new Set;for(const e of["B","R"])for(const o of n)i[e][o]&&t.add(i[e][o]);return t}function U(t,e,n){return`<div class="card ${e&&t.pos.length&&!t.pos.includes(e)?"offrole-card":""}" draggable="true" data-ref="${n}" tabindex="0" role="button">\n    ${J(t)}<span class="name">${t.name}</span>\n    <span class="poslist">${R(t)}</span>\n    ${e?function(t,e){if(!t.pos.length)return'<span class="fit main">올</span>';const n=t.pos.indexOf(e);return 0===n?'<span class="fit main">주</span>':1===n?'<span class="fit sub2">부</span>':n>=2?'<span class="fit sub2">3순위</span>':'<span class="fit offrole">오프</span>'}(t,e):""}\n  </div>`}function G(t){const e=i.B[t]&&A(i.B[t]),n=i.R[t]&&A(i.R[t]);if(!e||!n)return'<div class="adv even">—</div>';const o=D(e,t)-D(n,t);if(Math.abs(o)<1)return'<div class="adv even">비슷</div>';const s=1/(1+Math.pow(10,-100*Math.abs(o)/E(e,n,t))),l=Math.min(99,Math.round(100*s)),a=(l-50)/49,r=(t,e)=>Math.round(t+(e-t)*a);if(o>0){return`<div class="adv b" style="color:${`rgb(${r(130,110)},${r(150,195)},${r(175,255)})`}">◀ +${B(o)} · ${l}%</div>`}return`<div class="adv r" style="color:${`rgb(${r(180,255)},${r(140,110)},${r(135,100)})`}">+${B(-o)} · ${l}% ▶</div>`}function H(t){return"slot"===t.kind?"slot:"+t.team+":"+t.lane:"bench:"+t.id}function F(){!function(){O("roster").innerHTML=l.map(t=>`\n    <div class="roster-row ${a.has(t.id)?"":"off"}">\n      <span class="name">${t.name}</span>\n      ${J(t)}\n      <span class="poslist">${R(t)}</span>\n      <span class="score">${B(t.score)}pt</span>\n      <button class="toggle" data-toggle="${t.id}">${a.has(t.id)?"제외":"참여"}</button>\n    </div>`).join("");const t=a.size;O("countline").innerHTML=l.length?`참여 <span class="${10===t?"good":"bad"}">${t}</span> / ${l.length}명 ${10===t?"— 자동 배치 가능":"(자동 배치에는 정확히 10명 필요)"}`:"",O("btn-auto").disabled=10!==t}(),function(){let t='\n    <div class="team-head blue"><span class="dot"></span>1팀 (블루)</div>\n    <div class="vs-cell"><button type="button" class="swap-btn" data-swap title="1팀과 2팀 배치를 통째로 맞바꿉니다">⇄ 팀 교체</button></div>\n    <div class="team-head red">2팀 (레드)<span class="dot"></span></div>';for(const e of n){const n=i.B[e]&&A(i.B[e]),s=i.R[e]&&A(i.R[e]),l="free"!==f[e]?` · 현재 ${u[f[e]]}`:"";t+=`\n      <div class="slot" data-slot="B:${e}">${n?U(n,e,"slot:B:"+e):""}</div>\n      <div class="mid-cell" data-lane="${e}" title="클릭: 배치 방침 조정${l}">\n        <span class="lane-name">${o[e]}</span>\n        ${G(e)}\n      </div>\n      <div class="slot" data-slot="R:${e}">${s?U(s,e,"slot:R:"+e):""}</div>`}O("matchup").innerHTML=t;const e=j();O("bench").innerHTML=l.filter(t=>a.has(t.id)&&!e.has(t.id)).map(t=>U(t,null,"bench:"+t.id)).join("");const s=w("B"),r=w("R"),c=s+r;if(10===j().size){let t=0,e=0;for(const o of n){const n=A(i.B[o]),s=A(i.R[o]),l=D(n,o),a=D(s,o);t+=P(l-a)*g(o),e+=1/(1+Math.pow(10,-100*(l-a)/E(n,s,o)))}const o=1/(1+Math.pow(10,-t/5*100/400)),l=Math.round(100*o),a=100-l,c=Math.max(l,a);O("score-b").textContent=l+"%",O("score-r").textContent=a+"%",O("meter-b").style.width=l+"%",O("meter-r").style.width=a+"%",O("diffnote").innerHTML="예상 승률 기준 "+(c<=53?"<b>균형 좋음</b>":c<=57?"<b>무난</b>":"<b>차이 큼</b>")+`<div class="subnote">팀 전력 ${B(s)} : ${B(r)} · 기대 라인 승수 ${e.toFixed(1)} : ${(5-e).toFixed(1)} · 유효 격차 ${B(Math.abs(t))}pt</div>`}else O("score-b").textContent=B(s),O("score-r").textContent=B(r),O("meter-b").style.width=c?s/c*100+"%":"50%",O("meter-r").style.width=c?r/c*100+"%":"50%",O("diffnote").innerHTML=c?`전력 차 <b>${B(Math.abs(s-r))}pt</b> · 10명이 모두 배치되면 예상 승률을 계산합니다`:"자동 배치를 누르거나 대기석에서 끌어다 놓으세요";d&&document.querySelectorAll(".card").forEach(t=>{t.dataset.ref===H(d)&&t.classList.add("selected")})}()}function N(t){const e=t.split(":");return"slot"===e[0]?{kind:"slot",team:e[1],lane:e[2]}:{kind:"bench",id:e.slice(1).join(":")}}function z(t,e){if("slot"===t.kind&&"slot"===e.kind){const n=i[t.team][t.lane];i[t.team][t.lane]=i[e.team][e.lane],i[e.team][e.lane]=n}else"bench"===t.kind&&"slot"===e.kind?i[e.team][e.lane]=t.id:"slot"===t.kind&&"bench"===e.kind&&(i[t.team][t.lane]=e.id);d=null,pt=!1,F()}function q(){const e=function(t){const e={"탑":"TOP","정글":"JG","미드":"MID","원딜":"ADC","서폿":"SUP"};let n=null,o=0;const s={B:{},R:{}},l=[];for(const a of t.split(/\r?\n/)){const t=a.trim();if(!t)continue;const i=t.match(/^(탑|정글|미드|원딜|서폿)\s*[:：]\s*(.+?)\s*\(([^)]+)\)\s*$/);if(i){o++;const t=i[2].trim();t&&"-"!==t&&(l.push(_[t]&&_[t].line?_[t].line:`${t} ${i[3]} ${i[1]}`),n&&(s[n][e[i[1]]]=t));continue}/1\s*팀/.test(t)?n="B":/2\s*팀/.test(t)?n="R":l.push(t)}return o<2?null:{lines:l,arrangement:s}}(O("input").value);e&&(O("input").value=e.lines.join("\n"));const{out:s,errors:u}=S(O("input").value);if(l=s,function(e){let n=!1;if(e.forEach(e=>{const s=function(t){return`${t.name} ${t.tierLabel}${t.pos.length?" "+t.pos.map(t=>o[t]).join(" "):" 올라운더"}`}(e);_[e.name]&&_[e.name].line===s||(_[e.name]={line:s},n=!0,t&&t.collection("players").doc(e.name).set({line:s,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{}))}),n&&!t)try{localStorage.setItem("naejeon-playerdb",JSON.stringify(_))}catch(t){}}(s),a=new Set(s.slice(0,10).map(t=>t.id)),i={B:{TOP:null,JG:null,MID:null,ADC:null,SUP:null},R:{TOP:null,JG:null,MID:null,ADC:null,SUP:null}},r=[],c=0,d=null,e){for(const t of["B","R"])for(const o of n){const n=e.arrangement[t][o];if(!n)continue;const s=l.find(t=>t.name===n);s&&a.has(s.id)&&(i[t][o]=s.id)}pt=!1}F(),Ct(),u.length?wt("읽지 못한 줄: "+u.join(" / ")):wt(e?"결과 복사본을 명단으로 변환하고 배치까지 복원했습니다":s.length+"명을 읽었습니다")}function W(t){return String(t).replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[t]))}O("btn-parse").addEventListener("click",q);let V=[];function Y(){if(t)return V;try{return JSON.parse(localStorage.getItem("naejeon-rosters"))||[]}catch(t){return[]}}function X(t){try{localStorage.setItem("naejeon-rosters",JSON.stringify(t))}catch(t){}}t&&t.collection("rosters").orderBy("updatedAt","desc").limit(30).onSnapshot(t=>{V=t.docs.map(t=>t.data()),st()},()=>wt("공유 저장소 연결 실패 — 브라우저 저장으로 동작합니다"));let _={};if(t)t.collection("players").onSnapshot(t=>{_={},t.docs.forEach(t=>{_[t.id]=t.data()})},()=>{});else try{_=JSON.parse(localStorage.getItem("naejeon-playerdb"))||{}}catch(t){_={}}const K=document.getElementById("input"),Q=document.getElementById("ghost");function Z(){const t=K.selectionStart,e=K.value.slice(0,t).lastIndexOf("\n")+1,n=K.value.indexOf("\n",t);return{lineStart:e,lineEnd:-1===n?K.value.length:n,typed:K.value.slice(e,t)}}let tt=null;let et=null;function nt(){Q.style.display="none",et=null}function ot(){const t=Z(),e=t.typed.trimStart();if(!e||e.includes(" ")||K.selectionStart!==t.lineEnd)return void nt();const n=e.toLowerCase(),o=Object.keys(_).find(t=>t.toLowerCase().startsWith(n));if(!o)return void nt();const s=_[o].line,l=s.slice(e.length);if(!l)return void nt();et=s;const a=function(){tt||(tt=document.createElement("div"),tt.className="ta-mirror",K.parentNode.appendChild(tt));const t=getComputedStyle(K);for(const e of["fontFamily","fontSize","fontWeight","lineHeight","letterSpacing","wordSpacing","tabSize","paddingTop","paddingRight","paddingBottom","paddingLeft","boxSizing"])tt.style[e]=t[e];tt.style.width=K.clientWidth+"px",tt.textContent=K.value.slice(0,K.selectionStart);const e=document.createElement("span");return e.textContent="​",tt.appendChild(e),{left:e.offsetLeft+K.clientLeft,top:e.offsetTop-K.scrollTop+K.clientTop,lineH:parseFloat(t.lineHeight)||22,font:t.font}}();Q.textContent=l,Q.style.font=a.font,Q.style.left=a.left+"px",Q.style.top=a.top+"px",Q.style.display="block"}function st(){O("savedlist").innerHTML=Y().map((t,e)=>`\n    <div class="saved-row">\n      <div class="saved-info">\n        <span class="saved-name">${W(t.name)}</span>\n        <span class="saved-meta">${t.count}명 · ${W(t.date)}</span>\n      </div>\n      <button data-load="${e}">불러오기</button>\n      <button data-del="${e}">삭제</button>\n    </div>`).join("")}["input","click","keyup","focus"].forEach(t=>K.addEventListener(t,ot)),K.addEventListener("keydown",t=>{if("Tab"===t.key&&et)return t.preventDefault(),void function(){if(!et)return;const{lineStart:t,lineEnd:e}=Z();K.value=K.value.slice(0,t)+et+K.value.slice(e);const n=t+et.length;K.setSelectionRange(n,n),nt(),Ct()}();"Escape"===t.key&&nt()}),K.addEventListener("blur",nt),K.addEventListener("scroll",nt),O("btn-save").addEventListener("click",()=>{const e=O("input").value.trim();if(!e)return void wt("저장할 명단이 없습니다");const{out:n}=S(e),o=new Date,s=O("save-name").value.trim()||`${o.getMonth()+1}월 ${o.getDate()}일 명단`,l=`${o.getFullYear()}.${String(o.getMonth()+1).padStart(2,"0")}.${String(o.getDate()).padStart(2,"0")}`;if(t)t.collection("rosters").doc(s).set({name:s,text:e,count:n.length,date:l,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>wt(`'${s}' 저장 완료 (모두에게 공유됨)`),()=>wt("저장 실패 — 연결을 확인해 주세요"));else{const t=Y().filter(t=>t.name!==s);t.unshift({name:s,text:e,count:n.length,date:l}),X(t.slice(0,20)),st(),wt(`'${s}' 저장 완료`)}O("save-name").value=""});const lt=O("lanemenu");let at=null;const it=[{mode:"high",icon:"▲"},{mode:"mirror",icon:"⚖"},{mode:"low",icon:"▼"},{mode:"free",icon:"✕"}];function rt(){lt.classList.remove("show"),at=null}document.addEventListener("keydown",t=>{"Escape"===t.key&&rt()}),document.addEventListener("click",e=>{if(e.target.closest("[data-swap]")){const t=i.B;return i.B=i.R,i.R=t,d=null,F(),Ct(),void wt("두 팀을 서로 교체했습니다")}const s=e.target.closest("[data-intent]");if(s){const t=at;return rt(),void(t&&(f[t]=s.dataset.intent,bt(),mt(`${o[t]} 조건 적용`)))}if(e.target.closest(".lanemenu"))return;const l=e.target.closest(".mid-cell");if(l&&l.dataset.lane)return void function(t,e,n){at=t,lt.innerHTML=`<div class="lm-title">${o[t]} 배치 방침</div>`+it.map(e=>{const n=f[t]===e.mode,o=!n&&dt[e.mode]?` style="color:${dt[e.mode]}"`:"";return`<button type="button" data-intent="${e.mode}" class="${n?"cur":""}"${o} title="${ft[e.mode]}">${e.icon} ${u[e.mode]}</button>`}).join(""),lt.classList.add("show");const s=parseFloat(getComputedStyle(document.body).zoom)||1;lt.style.left=Math.min(e,window.innerWidth-200*s)/s+"px",lt.style.top=Math.min(n,window.innerHeight-200*s)/s+"px"}(l.dataset.lane,e.clientX,e.clientY);rt();const c=e.target.closest("[data-load]");if(c){const t=Y()[+c.dataset.load];return void(t&&(O("input").value=t.text,q(),wt(`'${t.name}' 명단을 불러왔습니다`)))}const p=e.target.closest("[data-del]");if(p){const e=Y(),n=e[+p.dataset.del];return void(n&&confirm(`'${n.name}' 명단을 삭제할까요?`)&&(t?t.collection("rosters").doc(n.name).delete().catch(()=>wt("삭제 실패 — 연결을 확인해 주세요")):(e.splice(+p.dataset.del,1),X(e),st())))}const m=e.target.closest("[data-toggle]");if(m){const t=m.dataset.toggle;if(a.has(t)){a.delete(t);for(const e of["B","R"])for(const o of n)i[e][o]===t&&(i[e][o]=null)}else a.add(t);return r=[],F(),void Ct()}const h=e.target.closest(".card");if(h){const t=N(h.dataset.ref);return d&&H(d)===h.dataset.ref?(d=null,void F()):d?(z(d,t),void Ct()):(d=t,void F())}const v=e.target.closest(".slot");if(v&&d){const[t,e]=v.dataset.slot.split(":");return z(d,{kind:"slot",team:t,lane:e}),void Ct()}});let ct=null;document.addEventListener("dragstart",t=>{const e=t.target.closest(".card");if(e){ct=e.dataset.ref,e.classList.add("dragging"),t.dataTransfer.effectAllowed="move";try{t.dataTransfer.setData("text/plain",ct)}catch(t){}}}),document.addEventListener("dragend",()=>{ct=null,document.querySelectorAll(".card.dragging").forEach(t=>t.classList.remove("dragging")),document.querySelectorAll(".slot.hover,.bench.hover").forEach(t=>t.classList.remove("hover"))}),document.addEventListener("dragover",t=>{const e=t.target.closest(".slot, .bench");e&&ct&&(t.preventDefault(),e.classList.add("hover"))}),document.addEventListener("dragleave",t=>{const e=t.target.closest(".slot, .bench");e&&e.classList.remove("hover")}),document.addEventListener("drop",t=>{const e=t.target.closest(".slot, .bench");if(!e||!ct)return;t.preventDefault();const n=N(ct);if(e.classList.contains("bench"))"slot"===n.kind&&(i[n.team][n.lane]=null,pt=!1),d=null,F();else{const[t,o]=e.dataset.slot.split(":");z(n,{kind:"slot",team:t,lane:o})}ct=null,Ct()});const dt={free:"",low:"#57a99b",high:"#c9954f",mirror:"#b9a06b"},ut={1:"#57a99b",2:"#57a99b",3:"",4:"#c9954f",5:"#c4756e"},ft={free:"추가 조건 없음",low:"이 라인에 팀 내 낮은 티어를 우선 세웁니다",high:"이 라인에 팀 내 높은 티어(에이스)를 우선 세웁니다",mirror:"맞라인 상대와 최대한 비슷한 티어로 맞춥니다"};let pt=!1;function mt(t){if(r=[],c=0,10===a.size&&(r=T(),r.length))return I(r[0]),pt=!0,Ct(),void wt(t+" — 즉시 다시 배치했습니다");Ct(),wt(t+" — 자동 배치를 누르면 반영됩니다")}function ht(t){pt?mt(t):(r=[],c=0,Ct(),wt(t+" — 자동 배치를 누르면 반영됩니다"))}function vt(t,e){t.style.color=e||""}const gt=document.querySelectorAll("[data-opt]");function bt(){gt.forEach(t=>{const e=f[t.dataset.opt]||"free";t.value=e,t.title=ft[e]||"",vt(t,dt[e])})}gt.forEach(t=>{t.innerHTML=Object.entries(u).map(([t,e])=>`<option value="${t}"${dt[t]?` style="color:${dt[t]}"`:""}>${e}</option>`).join(""),t.addEventListener("change",()=>{f[t.dataset.opt]=t.value,bt(),ht("옵션 변경")})});const $t=document.querySelectorAll("[data-meta]");function yt(){$t.forEach(t=>{const e=v[t.dataset.meta];t.value=e,t.title=`이 라인의 맞대면 격차를 ×${p[e]} 비중으로 반영합니다`,vt(t,ut[e])})}function St(t,e){v=Object.assign({},t),yt(),ht(e)}$t.forEach(t=>{t.innerHTML=[5,4,3,2,1].map(t=>`<option value="${t}"${ut[t]?` style="color:${ut[t]}"`:""}>${m[t]}</option>`).join("")}),$t.forEach(t=>t.addEventListener("change",()=>{const e=Object.assign({},v);e[t.dataset.meta]=parseInt(t.value,10)||3,St(e,"가중치 변경됨")})),O("meta-equal").addEventListener("click",()=>St({TOP:3,JG:3,MID:3,ADC:3,SUP:3},"균등 가중치 적용")),O("meta-current").addEventListener("click",()=>St(h,"현재 메타(26.16) 가중치 적용"));const Mt=O("lane-cap");function Lt(){Mt.value=String(b),Mt.style.color=b?"#b9a06b":""}Mt.innerHTML=[["0","제한 없음"],["90","90%"],["80","80%"],["70","70%"]].map(([t,e])=>`<option value="${t}">${e}</option>`).join(""),Mt.addEventListener("change",()=>{b=parseInt(Mt.value,10)||0,Lt(),ht("라인 최대 승률 "+(b?b+"%":"제한 없음"))});const xt=O("off-limit");function Dt(){xt.value=String($),xt.style.color=-1===$?"":"#b9a06b"}xt.innerHTML=[["-1","제한 없음"],["0","끄기"],["1","최대 1명"],["2","최대 2명"]].map(([t,e])=>`<option value="${t}">${e}</option>`).join(""),xt.addEventListener("change",()=>{$=parseInt(xt.value,10),$>=0&&$<=2||($=-1),Dt(),ht("오프 포지션 "+(-1===$?"제한 없음":0===$?"끄기":"최대 "+$+"명"))}),O("btn-auto").addEventListener("click",()=>{r=T(),c=0,r.length?(I(r[0]),pt=!0,Ct(),wt("가장 균형 잡힌 조합으로 배치했습니다")):wt("참여 인원이 10명이어야 합니다")}),O("btn-next").addEventListener("click",()=>{r.length||(r=T()),r.length?(c=(c+1)%r.length,I(r[c]),pt=!0,Ct(),wt(`대안 조합 ${c+1} / ${r.length}`)):wt("참여 인원이 10명이어야 합니다")}),O("btn-clear").addEventListener("click",()=>{i={B:{TOP:null,JG:null,MID:null,ADC:null,SUP:null},R:{TOP:null,JG:null,MID:null,ADC:null,SUP:null}},d=null,pt=!1,F(),Ct()}),O("btn-copy").addEventListener("click",()=>{const t=t=>n.map(e=>{const n=i[t][e]&&A(i[t][e]);return`${o[e]}: ${n?n.name+" ("+n.tierLabel+")":"-"}`}).join("\n"),e=w("B"),s=w("R"),l=`🔵 1팀 (전력 ${B(e)}pt)\n${t("B")}\n\n🔴 2팀 (전력 ${B(s)}pt)\n${t("R")}`;navigator.clipboard.writeText(l).then(()=>wt("결과를 복사했습니다"),()=>wt("복사 실패 — 텍스트를 직접 선택해 주세요"))});let Et=null;function wt(t){const e=O("toast");e.textContent=t,e.classList.add("show"),clearTimeout(Et),Et=setTimeout(()=>e.classList.remove("show"),2600)}function Ct(){try{localStorage.setItem("naejeon-state",JSON.stringify({input:O("input").value,active:[...a],slots:i,opts:f,metaLv:v,laneProbCap:b,offLimit:$}))}catch(t){}}!function(){let e=null;try{e=JSON.parse(localStorage.getItem("naejeon-state"))}catch(t){}O("input").value=e&&e.input||"소나 다4 미드 서폿\n파리즈 플1 정글 바텀\n강자쿠 실2 탑\n귀삼 실4 미드 원딜 정글\n세세세 에2 원딜 서폿\n돌맹 에1 정글 서폿\n거자 다1 미드 원딜 서폿\n사과 에3 미드 탑\n노리 에1 원딜\n본 골 서폿 미드 탑";const{out:o}=S(O("input").value);if(l=o,e&&Array.isArray(e.active)?(a=new Set(e.active.filter(t=>l.some(e=>e.id===t))),a.size||(a=new Set(o.slice(0,10).map(t=>t.id)))):a=new Set(o.slice(0,10).map(t=>t.id)),e&&e.slots)for(const t of["B","R"])for(const o of n){const n=e.slots[t]&&e.slots[t][o];i[t][o]=n&&a.has(n)?n:null}if(e&&e.opts){for(const t of n)u[e.opts[t]]&&(f[t]=e.opts[t]);e.opts.lowSup&&(f.SUP="low"),e.opts.lowJg&&(f.JG="low"),e.opts.adcMirror&&(f.ADC="mirror")}if(bt(),e&&e.metaLv)for(const t of n){const n=parseInt(e.metaLv[t],10);n>=1&&n<=5&&(v[t]=n)}else if(e&&e.metaW)for(const t of n){const n=parseFloat(e.metaW[t]);if(isFinite(n)){let e=3,o=1/0;for(const t of[1,2,3,4,5]){const s=Math.abs(p[t]-n);s<o&&(o=s,e=t)}v[t]=e}}yt(),e&&[70,80,90].includes(parseInt(e.laneProbCap,10))&&(b=parseInt(e.laneProbCap,10)),Lt(),e&&[-1,0,1,2].includes(parseInt(e.offLimit,10))&&($=parseInt(e.offLimit,10)),Dt(),F(),st(),O("share-mode").textContent=t?"🌐 공유 모드: 저장한 명단과 선수 정보가 모든 접속자에게 보입니다":"이 브라우저에만 저장됩니다 (Firebase 설정을 넣으면 모두와 공유됩니다)"}();</script>
+</body>
+</html>
