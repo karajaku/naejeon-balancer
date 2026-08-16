@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내전 밸런서 — 멤버 관리</title>
+<style>
+  :root {
+    --bg: #0a101a;
+    --panel: #121b29;
+    --panel-2: #172233;
+    --line: #263349;
+    --gold: #c8aa6e;
+    --gold-dim: #8a7a52;
+    --text: #e9e4d9;
+    --muted: #8b96a5;
+    --dim: #4d5769;
+    --danger: #e0635c;
+    --ok: #58c98a;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    margin: 0;
+    background: radial-gradient(1100px 500px at 50% -150px, rgba(200,170,110,0.07), transparent 70%), var(--bg);
+    color: var(--text);
+    font-family: 'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
+    line-height: 1.5; min-height: 100vh;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 28px 20px 64px; }
+  header.top { text-align: center; margin-bottom: 22px; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.28em; color: var(--gold-dim); text-transform: uppercase; margin-bottom: 6px; }
+  h1 { margin: 0; font-size: 26px; font-weight: 800; color: var(--gold); }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .navlinks { margin-top: 10px; font-size: 12.5px; }
+  .navlinks a { color: var(--gold-dim); text-decoration: none; margin: 0 8px; }
+  .navlinks a:hover { color: var(--gold); }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+  .panel h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: 0.14em; color: var(--gold); text-transform: uppercase; font-weight: 700; }
+  .hint { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  .empty { color: var(--muted); text-align: center; padding: 28px 0; font-size: 13.5px; }
+
+  input[type="text"] {
+    background: #0d1420; color: var(--text); border: 1px solid var(--line); border-radius: 7px;
+    padding: 7px 10px; font-size: 13px; font-family: inherit; width: 100%;
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--gold-dim); }
+  button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 7px;
+    padding: 7px 12px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  button:hover { border-color: var(--gold-dim); }
+  button.danger:hover { border-color: var(--danger); color: var(--danger); }
+  button.primary { background: #2a2417; color: var(--gold); border-color: var(--gold-dim); font-weight: 700; }
+  button:disabled { opacity: .4; cursor: default; }
+
+  .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+  .countline { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+
+  .row { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(38,51,73,0.5); }
+  .row .name { flex: 0 0 110px; font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row input { flex: 1; }
+  .row.changed input { border-color: var(--gold-dim); }
+  .addrow { display: flex; gap: 8px; margin-top: 12px; }
+  .addrow input.nm { flex: 0 0 110px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+    background: #1d2333; color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 18px; font-size: 13px; opacity: 0; pointer-events: none;
+    transition: opacity .2s, transform .2s; max-width: 90vw;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Custom Match Balancer</div>
+    <h1>멤버 관리</h1>
+    <div class="sub">자동완성에 쓰이는 선수 정보(이름 → 티어·포지션)를 수정·삭제합니다</div>
+    <div class="navlinks">
+      <a href="index.html">← 밸런서</a> · <a href="stats.html">📊 대전 기록·랭킹</a>
+    </div>
+  </header>
+
+  <div class="panel">
+    <h2>저장된 멤버</h2>
+    <div class="hint">
+      정보 줄 형식은 명단 입력과 같습니다: <b>이름 티어 포지션…</b> (예: 소나 다4 미드 서폿 · 불가는 !서폿).
+      줄을 고친 뒤 <b>저장</b>을 누르면 모든 접속자의 자동완성에 반영됩니다. 이름을 바꾸려면 삭제 후 아래에서 새로 추가하세요.
+    </div>
+    <div class="toolbar">
+      <input type="text" id="search" placeholder="이름 검색…">
+      <button id="btn-refresh">새로고침</button>
+    </div>
+    <div class="countline" id="countline"></div>
+    <div id="list"><div class="empty">불러오는 중…</div></div>
+    <div class="addrow">
+      <input type="text" class="nm" id="add-name" placeholder="이름" maxlength="40">
+      <input type="text" id="add-line" placeholder="정보 줄 (예: 소나 다4 미드 서폿)" maxlength="200">
+      <button class="primary" id="btn-add">추가</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>"use strict";const t="https://naejeon-balancer-api.karajaku.workers.dev",e=t=>document.getElementById(t),a=t=>String(t).replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[t]));let n=null;function s(t){const a=e("toast");a.textContent=t,a.classList.add("show"),clearTimeout(n),n=setTimeout(()=>a.classList.remove("show"),2600)}let i={};async function r(){try{const e=await fetch(t+"/players");if(!e.ok)throw new Error("api");i=(await e.json()).players||{},o()}catch(t){e("list").innerHTML='<div class="empty">서버에 연결하지 못했습니다</div>',e("countline").textContent=""}}function o(){const t=e("search").value.trim().toLowerCase(),n=Object.keys(i).sort((t,e)=>t.localeCompare(e,"ko")),s=t?n.filter(e=>e.toLowerCase().includes(t)):n;e("countline").textContent=t?`${s.length}명 표시 / 전체 ${n.length}명`:`전체 ${n.length}명 — 명단 읽기에 쓰인 선수가 자동으로 등록됩니다`,n.length?s.length?e("list").innerHTML=s.map(t=>`\n    <div class="row" data-name="${a(t)}">\n      <span class="name" title="${a(t)}">${a(t)}</span>\n      <input type="text" value="${a(i[t].line||"")}" maxlength="200">\n      <button data-save disabled>저장</button>\n      <button data-del class="danger">삭제</button>\n    </div>`).join(""):e("list").innerHTML='<div class="empty">검색 결과가 없습니다</div>':e("list").innerHTML='<div class="empty">저장된 멤버가 없습니다 — 밸런서에서 명단을 읽으면 자동으로 쌓입니다</div>'}e("search").addEventListener("input",o),e("btn-refresh").addEventListener("click",()=>{r(),s("새로고침했습니다")}),document.addEventListener("input",t=>{const e=t.target.closest(".row");if(!e||"text"!==t.target.type)return;const a=e.dataset.name,n=t.target.value!==(i[a]&&i[a].line);e.classList.toggle("changed",n),e.querySelector("[data-save]").disabled=!n}),document.addEventListener("click",async a=>{const n=a.target.closest(".row");if(n&&a.target.closest("[data-save]")){const e=n.dataset.name,a=n.querySelector("input").value.trim();if(!a)return void s("정보 줄이 비어 있습니다 — 삭제하려면 삭제 버튼을 쓰세요");try{if(!(await fetch(t+"/players-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({players:{[e]:{line:a}}})})).ok)throw new Error("api");i[e]={line:a},n.classList.remove("changed"),n.querySelector("[data-save]").disabled=!0,s(`'${e}' 저장 완료 (모두에게 반영)`)}catch(t){s("저장 실패 — 연결을 확인해 주세요")}return}if(n&&a.target.closest("[data-del]")){const e=n.dataset.name;if(!confirm(`'${e}' 멤버를 삭제할까요?\n자동완성에서 빠집니다 (경기 기록·랭킹은 지워지지 않습니다)`))return;try{if(!(await fetch(t+"/players-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({names:[e]})})).ok)throw new Error("api");delete i[e],o(),s(`'${e}' 삭제 완료`)}catch(t){s("삭제 실패 — 연결을 확인해 주세요")}return}if(a.target.closest("#btn-add")){const a=e("add-name").value.trim().slice(0,40),n=e("add-line").value.trim();if(!a||!n)return void s("이름과 정보 줄을 모두 입력해 주세요");if(i[a]&&!confirm(`'${a}' 은(는) 이미 있습니다. 덮어쓸까요?`))return;try{if(!(await fetch(t+"/players-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({players:{[a]:{line:n}}})})).ok)throw new Error("api");i[a]={line:n},e("add-name").value="",e("add-line").value="",o(),s(`'${a}' 추가 완료`)}catch(t){s("추가 실패 — 연결을 확인해 주세요")}}}),r();</script>
+</body>
+</html>
