@@ -3,3 +3,4 @@ src/
 build.mjs
 worker/
 .build-*.js
+docs/
