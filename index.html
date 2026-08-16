@@ -186,10 +186,9 @@
   }
   .slot.hover { border-color: var(--gold); background: rgba(200,170,110,0.06); }
   .slot:empty::after { content: "비어 있음"; color: #4a5566; font-size: 12px; padding-left: 10px; }
-  /* 1팀 카드는 가운데(VS)를 향해 붙이되, 읽는 순서(티어·이름·포지션·숙련 태그)는 2팀과 동일하게 유지
-     — 내용까지 거울 반전하면 태그가 포지션 목록을 수식하는 것으로 잘못 읽힌다.
-     포지션 우선순위는 목록의 > 기호가 표시한다 */
-  .slot[data-slot^="B:"] .card { justify-content: flex-end; }
+  /* 1팀 카드는 2팀의 역순(거울) 배치 — 양 팀 모두 중앙(VS) 기준으로 태그가 안쪽, 티어가 바깥쪽.
+     숙련 태그가 배지 모양이고 포지션 목록이 > 우선순위 표기라, 역순으로 읽혀도 뜻이 헷갈리지 않는다 */
+  .slot[data-slot^="B:"] .card { flex-direction: row-reverse; }
   .slot[data-slot^="B:"]:empty { justify-content: flex-end; }
   .slot[data-slot^="B:"]:empty::after { padding-left: 0; padding-right: 10px; }
 
