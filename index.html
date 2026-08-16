@@ -206,7 +206,8 @@
   /* 주/부 표시도 내용 덩어리에 붙여서 카드 내용이 한 곳에 모이게 (빈 공간은 바깥쪽 한 곳으로) */
   /* 카드 포지션 목록이 숙련 정보를 직접 표현: 배치된 라인만 흰색 볼드, 나머지는 회색,
      오프·불가 배치일 때만 목록 끝에 빨간 꼬리표 */
-  .card .poslist .pl-cur { color: #e9eef7; font-weight: 700; }
+  .card .poslist { color: #4d5769; } /* 명단보다 한 단계 더 흐리게 — 배치된 라인(흰 볼드)이 또렷이 구분되도록 */
+  .card .poslist .pl-cur { color: #eef2f9; font-weight: 700; }
   .card .poslist .pl-off { color: var(--danger); font-weight: 700; }
   .card.offrole-card { border-color: rgba(224,99,92,0.55); }
 
