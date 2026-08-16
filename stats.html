@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내전 밸런서 — 대전 기록·랭킹</title>
+<style>
+  :root {
+    --bg: #0a101a;
+    --panel: #121b29;
+    --panel-2: #172233;
+    --line: #263349;
+    --gold: #c8aa6e;
+    --gold-dim: #8a7a52;
+    --text: #e9e4d9;
+    --muted: #8b96a5;
+    --dim: #4d5769;
+    --blue: #4c9be0;
+    --red: #e0635c;
+    --danger: #e0635c;
+    --ok: #58c98a;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    margin: 0;
+    background: radial-gradient(1100px 500px at 50% -150px, rgba(200,170,110,0.07), transparent 70%), var(--bg);
+    color: var(--text);
+    font-family: 'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
+    line-height: 1.5; min-height: 100vh;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 28px 20px 64px; }
+  header.top { text-align: center; margin-bottom: 22px; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.28em; color: var(--gold-dim); text-transform: uppercase; margin-bottom: 6px; }
+  h1 { margin: 0; font-size: 26px; font-weight: 800; color: var(--gold); }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .backlink { display: inline-block; margin-top: 10px; color: var(--gold-dim); font-size: 12.5px; text-decoration: none; }
+  .backlink:hover { color: var(--gold); }
+
+  .tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+  .tabs button {
+    background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 18px; font-size: 13.5px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .tabs button.cur { background: #2a2417; color: var(--gold); border-color: var(--gold-dim); }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+  .panel h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: 0.14em; color: var(--gold); text-transform: uppercase; font-weight: 700; }
+  .empty { color: var(--muted); text-align: center; padding: 28px 0; font-size: 13.5px; }
+
+  /* 요약 카드 */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .stat-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; text-align: center; }
+  .stat-card .v { font-size: 22px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .stat-card .k { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+  /* 랭킹 표 */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 7px 8px; border-bottom: 1px solid rgba(38,51,73,0.5); font-variant-numeric: tabular-nums; }
+  td.name { font-weight: 700; }
+  td.num, th.num { text-align: right; }
+  .ratebar { display: inline-block; vertical-align: middle; width: 74px; height: 6px; background: var(--panel-2); border-radius: 3px; margin-right: 8px; overflow: hidden; }
+  .ratebar i { display: block; height: 100%; background: var(--gold); border-radius: 3px; }
+  tr.low td { color: var(--dim); }
+  tr.low td.name { color: var(--muted); font-weight: 400; }
+  .offrec { color: var(--muted); font-size: 12px; }
+  .medal { margin-right: 4px; }
+
+  /* 경기 기록 */
+  .match { border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); padding: 10px 12px; margin-bottom: 10px; }
+  .match-head { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); margin-bottom: 8px; flex-wrap: wrap; }
+  .match-head .when { font-variant-numeric: tabular-nums; }
+  .winbadge { font-weight: 800; }
+  .winbadge.b { color: var(--blue); }
+  .winbadge.r { color: var(--red); }
+  .pred { margin-left: auto; }
+  .pred .hit { color: var(--ok); }
+  .pred .miss { color: var(--danger); }
+  .lanes { display: grid; grid-template-columns: 1fr 52px 1fr; gap: 2px 8px; font-size: 12.5px; }
+  .lanes .b { text-align: right; }
+  .lanes .lane { text-align: center; color: var(--dim); font-size: 11.5px; align-self: center; }
+  .lanes .won { font-weight: 700; }
+  .lanes .b.won { color: var(--blue); }
+  .lanes .r.won { color: var(--red); }
+  .offmark { color: var(--danger); font-size: 11px; font-weight: 700; }
+  .foot { text-align: center; color: var(--dim); font-size: 11.5px; margin-top: 18px; }
+  @media (max-width: 560px) { .lanes { font-size: 11.5px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Custom Match Balancer</div>
+    <h1>대전 기록 · 승률 랭킹</h1>
+    <div class="sub">밸런서에서 "승리 기록"을 누른 경기들이 여기에 쌓입니다</div>
+    <a class="backlink" href="index.html">← 밸런서로 돌아가기</a>
+  </header>
+
+  <div class="tabs">
+    <button id="tab-rank" class="cur">🏆 승률 랭킹</button>
+    <button id="tab-hist">📜 대전 기록</button>
+  </div>
+
+  <div id="view-rank">
+    <div class="cards" id="cards"></div>
+    <div class="panel">
+      <h2>선수별 승률</h2>
+      <div id="rank-body"><div class="empty">불러오는 중…</div></div>
+    </div>
+    <div class="panel">
+      <h2>예측 적중률 (보정용)</h2>
+      <div id="calib-body"><div class="empty">불러오는 중…</div></div>
+    </div>
+  </div>
+
+  <div id="view-hist" style="display:none">
+    <div class="panel">
+      <h2>최근 경기 (최신순, 최대 100)</h2>
+      <div id="hist-body"><div class="empty">불러오는 중…</div></div>
+    </div>
+  </div>
+
+  <div class="foot">승률 랭킹은 3경기 이상부터 순위에 올립니다 · 데이터는 계산 서버(KV)에 저장</div>
+</div>
+
+<script>"use strict";const t="https://naejeon-balancer-api.karajaku.workers.dev",s={TOP:"탑",JG:"정글",MID:"미드",ADC:"원딜",SUP:"서폿"},a=t=>document.getElementById(t),n=t=>String(t).replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[t]));function e(t){a("view-rank").style.display="rank"===t?"":"none",a("view-hist").style.display="hist"===t?"":"none",a("tab-rank").classList.toggle("cur","rank"===t),a("tab-hist").classList.toggle("cur","hist"===t)}a("tab-rank").addEventListener("click",()=>e("rank")),a("tab-hist").addEventListener("click",()=>e("hist"));const i="아직 기록된 경기가 없습니다 — 밸런서에서 경기 후 <b>승리 기록</b>을 누르면 쌓입니다";!async function(){let s;try{const a=await fetch(t+"/stats");if(!a.ok)throw new Error("api");s=await a.json()}catch(t){return a("rank-body").innerHTML='<div class="empty">서버에 연결하지 못했습니다</div>',void(a("calib-body").innerHTML='<div class="empty">서버에 연결하지 못했습니다</div>')}const e=s.calibration||{},d=Object.values(e).reduce((t,s)=>t+s.n,0),r=Object.values(e).reduce((t,s)=>t+s.hit,0);a("cards").innerHTML=`\n    <div class="stat-card"><div class="v">${s.matches}</div><div class="k">기록된 경기</div></div>\n    <div class="stat-card"><div class="v">${Object.keys(s.players||{}).length}</div><div class="k">기록된 선수</div></div>\n    <div class="stat-card"><div class="v">${d?Math.round(r/d*100)+"%":"—"}</div><div class="k">예측 적중률</div></div>`;const c=Object.entries(s.players||{}).map(([t,s])=>{const a=s.w+s.l;return{name:t,...s,games:a,rate:a?s.w/a:0}});if(c.length){const t=c.filter(t=>t.games>=3).sort((t,s)=>s.rate-t.rate||s.games-t.games),s=c.filter(t=>t.games<3).sort((t,s)=>s.games-t.games||s.rate-t.rate),e=t=>0===t?"🥇":1===t?"🥈":2===t?"🥉":t+1,i=(t,s,a)=>`\n      <tr class="${a?"low":""}">\n        <td>${a?"—":`<span class="medal">${e(s)}</span>`}</td>\n        <td class="name">${n(t.name)}</td>\n        <td class="num">${t.games}</td>\n        <td class="num">${t.w}승 ${t.l}패</td>\n        <td class="num"><span class="ratebar"><i style="width:${Math.round(100*t.rate)}%"></i></span>${Math.round(100*t.rate)}%</td>\n        <td class="offrec">${t.offW+t.offL?`오프 ${t.offW}승 ${t.offL}패`:""}</td>\n      </tr>`;a("rank-body").innerHTML=`\n      <table>\n        <thead><tr><th></th><th>이름</th><th class="num">경기</th><th class="num">전적</th><th class="num">승률</th><th>오프 전적</th></tr></thead>\n        <tbody>\n          ${t.map((t,s)=>i(t,s,!1)).join("")}\n          ${s.map(t=>i(t,0,!0)).join("")}\n        </tbody>\n      </table>\n      ${s.length?'<div class="foot" style="margin-top:8px">흐린 줄은 3경기 미만 (순위 밖)</div>':""}`}else a("rank-body").innerHTML=`<div class="empty">${i}</div>`;a("calib-body").innerHTML=d?`\n      <table>\n        <thead><tr><th>예측 우세 구간</th><th class="num">경기</th><th class="num">적중</th><th class="num">적중률</th></tr></thead>\n        <tbody>${Object.entries(e).map(([t,s])=>`\n          <tr><td>${t}</td><td class="num">${s.n}</td><td class="num">${s.hit}</td>\n          <td class="num">${s.n?Math.round(s.hit/s.n*100)+"%":"—"}</td></tr>`).join("")}\n        </tbody>\n      </table>\n      <div class="foot" style="margin-top:8px">구간별 적중률이 구간 자체(52%·58%·63%…)와 비슷하면 승률 곡선이 잘 보정된 것입니다</div>`:'<div class="empty">예측이 기록된 경기가 없습니다</div>'}(),async function(){let e;try{const s=await fetch(t+"/matches");if(!s.ok)throw new Error("api");e=(await s.json()).matches||[]}catch(t){return void(a("hist-body").innerHTML='<div class="empty">서버에 연결하지 못했습니다</div>')}if(!e.length)return void(a("hist-body").innerHTML=`<div class="empty">${i}</div>`);const d=t=>String(t).padStart(2,"0");a("hist-body").innerHTML=e.map(t=>{const a="B"===t.winner,e=t.predictedPctB,i=null==e?"":(()=>{const s=e>=50?"B":"R",a=Math.max(e,100-e),n=s===t.winner;return`<span class="pred">예측 ${"B"===s?"1팀":"2팀"} ${a}% <span class="${n?"hit":"miss"}">${n?"적중":"빗나감"}</span></span>`})(),r=t=>Object.fromEntries((t||[]).map(t=>[t.lane,t])),c=r(t.blue),l=r(t.red),o=(t,s,a)=>t?`<div class="${s} ${a?"won":""}">${n(t.name)}${t.off?' <span class="offmark">오프</span>':""}</div>`:`<div class="${s}">-</div>`;return`\n      <div class="match">\n        <div class="match-head">\n          <span class="when">${(t=>{const s=new Date(t);return`${s.getFullYear()}.${d(s.getMonth()+1)}.${d(s.getDate())} ${d(s.getHours())}:${d(s.getMinutes())}`})(t.at)}</span>\n          <span class="winbadge ${a?"b":"r"}">${a?"🔵 1팀 승리":"🔴 2팀 승리"}</span>\n          ${i}\n        </div>\n        <div class="lanes">\n          ${Object.keys(s).map(t=>o(c[t],"b",a)+`<div class="lane">${s[t]}</div>`+o(l[t],"r",!a)).join("")}\n        </div>\n      </div>`}).join("")}();</script>
+</body>
+</html>
