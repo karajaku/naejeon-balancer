@@ -43,12 +43,13 @@
 
   input[type="text"] {
     background: #0d1420; color: var(--text); border: 1px solid var(--line); border-radius: 7px;
-    padding: 7px 10px; font-size: 13px; font-family: inherit; width: 100%;
+    padding: 6px 10px; font-size: 13px; font-family: inherit; width: 100%;
   }
   input[type="text"]:focus { outline: none; border-color: var(--gold-dim); }
+  input.bad { border-color: var(--danger) !important; }
   button {
     background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 7px;
-    padding: 7px 12px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap;
+    padding: 6px 12px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap;
   }
   button:hover { border-color: var(--gold-dim); }
   button.danger:hover { border-color: var(--danger); color: var(--danger); }
@@ -58,12 +59,25 @@
   .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
   .countline { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
 
-  .row { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(38,51,73,0.5); }
-  .row .name { flex: 0 0 110px; font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .row input { flex: 1; }
-  .row.changed input { border-color: var(--gold-dim); }
-  .addrow { display: flex; gap: 8px; margin-top: 12px; }
-  .addrow input.nm { flex: 0 0 110px; }
+  /* 행을 팀 배치 카드(2팀, 왼쪽 정렬)와 같은 양식으로: [티어][이름][포지션] */
+  .row {
+    display: flex; gap: 8px; align-items: center;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px;
+    padding: 6px 10px; margin-bottom: 8px; font-size: 13px;
+  }
+  .row input.tier {
+    flex: 0 0 84px; text-align: center; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .row .name { flex: 0 0 120px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row input.name-in { flex: 0 0 120px; font-weight: 700; }
+  .row input.pos { flex: 1; color: var(--muted); }
+  .row.changed { border-color: var(--gold-dim); }
+  .addrow-title { color: var(--gold-dim); font-size: 12px; margin: 14px 0 6px; font-weight: 700; }
+  @media (max-width: 560px) {
+    .row { flex-wrap: wrap; }
+    .row .name, .row input.name-in { flex: 1 1 100%; }
+  }
 
   .toast {
     position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
@@ -80,7 +94,7 @@
   <header class="top">
     <div class="eyebrow">Custom Match Balancer</div>
     <h1>멤버 관리</h1>
-    <div class="sub">자동완성에 쓰이는 선수 정보(이름 → 티어·포지션)를 수정·삭제합니다</div>
+    <div class="sub">자동완성에 쓰이는 선수 정보(티어·포지션)를 수정·삭제합니다</div>
     <div class="navlinks">
       <a href="index.html">← 밸런서</a> · <a href="stats.html">📊 대전 기록·랭킹</a>
     </div>
@@ -89,8 +103,9 @@
   <div class="panel">
     <h2>저장된 멤버</h2>
     <div class="hint">
-      정보 줄 형식은 명단 입력과 같습니다: <b>이름 티어 포지션…</b> (예: 소나 다4 미드 서폿 · 불가는 !서폿).
-      줄을 고친 뒤 <b>저장</b>을 누르면 모든 접속자의 자동완성에 반영됩니다. 이름을 바꾸려면 삭제 후 아래에서 새로 추가하세요.
+      티어는 밸런서와 같은 줄임말(<b>아·브·실·골·플·에·다·마·그마·챌</b>)+숫자,
+      포지션은 공백으로 구분해 <b>앞이 주 포지션</b> (예: <b>미드 서폿</b> · 불가는 <b>!서폿</b> · 비우면 올라운더).
+      고치면 <b>저장</b>이 켜지고, 저장하면 모든 접속자에게 반영됩니다. 이름 변경은 삭제 후 아래에서 새로 추가하세요.
     </div>
     <div class="toolbar">
       <input type="text" id="search" placeholder="이름 검색…">
@@ -98,15 +113,17 @@
     </div>
     <div class="countline" id="countline"></div>
     <div id="list"><div class="empty">불러오는 중…</div></div>
-    <div class="addrow">
-      <input type="text" class="nm" id="add-name" placeholder="이름" maxlength="40">
-      <input type="text" id="add-line" placeholder="정보 줄 (예: 소나 다4 미드 서폿)" maxlength="200">
+    <div class="addrow-title">＋ 새 멤버 추가</div>
+    <div class="row" id="addrow">
+      <input type="text" class="tier" id="add-tier" placeholder="티어" maxlength="10">
+      <input type="text" class="name-in" id="add-name" placeholder="이름" maxlength="40">
+      <input type="text" class="pos" id="add-pos" placeholder="포지션 (예: 미드 서폿 !탑)" maxlength="120">
       <button class="primary" id="btn-add">추가</button>
     </div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 
-<script>"use strict";const t="https://naejeon-balancer-api.karajaku.workers.dev",e=t=>document.getElementById(t),a=t=>String(t).replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[t]));let n=null;function s(t){const a=e("toast");a.textContent=t,a.classList.add("show"),clearTimeout(n),n=setTimeout(()=>a.classList.remove("show"),2600)}let i={};async function r(){try{const e=await fetch(t+"/players");if(!e.ok)throw new Error("api");i=(await e.json()).players||{},o()}catch(t){e("list").innerHTML='<div class="empty">서버에 연결하지 못했습니다</div>',e("countline").textContent=""}}function o(){const t=e("search").value.trim().toLowerCase(),n=Object.keys(i).sort((t,e)=>t.localeCompare(e,"ko")),s=t?n.filter(e=>e.toLowerCase().includes(t)):n;e("countline").textContent=t?`${s.length}명 표시 / 전체 ${n.length}명`:`전체 ${n.length}명 — 명단 읽기에 쓰인 선수가 자동으로 등록됩니다`,n.length?s.length?e("list").innerHTML=s.map(t=>`\n    <div class="row" data-name="${a(t)}">\n      <span class="name" title="${a(t)}">${a(t)}</span>\n      <input type="text" value="${a(i[t].line||"")}" maxlength="200">\n      <button data-save disabled>저장</button>\n      <button data-del class="danger">삭제</button>\n    </div>`).join(""):e("list").innerHTML='<div class="empty">검색 결과가 없습니다</div>':e("list").innerHTML='<div class="empty">저장된 멤버가 없습니다 — 밸런서에서 명단을 읽으면 자동으로 쌓입니다</div>'}e("search").addEventListener("input",o),e("btn-refresh").addEventListener("click",()=>{r(),s("새로고침했습니다")}),document.addEventListener("input",t=>{const e=t.target.closest(".row");if(!e||"text"!==t.target.type)return;const a=e.dataset.name,n=t.target.value!==(i[a]&&i[a].line);e.classList.toggle("changed",n),e.querySelector("[data-save]").disabled=!n}),document.addEventListener("click",async a=>{const n=a.target.closest(".row");if(n&&a.target.closest("[data-save]")){const e=n.dataset.name,a=n.querySelector("input").value.trim();if(!a)return void s("정보 줄이 비어 있습니다 — 삭제하려면 삭제 버튼을 쓰세요");try{if(!(await fetch(t+"/players-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({players:{[e]:{line:a}}})})).ok)throw new Error("api");i[e]={line:a},n.classList.remove("changed"),n.querySelector("[data-save]").disabled=!0,s(`'${e}' 저장 완료 (모두에게 반영)`)}catch(t){s("저장 실패 — 연결을 확인해 주세요")}return}if(n&&a.target.closest("[data-del]")){const e=n.dataset.name;if(!confirm(`'${e}' 멤버를 삭제할까요?\n자동완성에서 빠집니다 (경기 기록·랭킹은 지워지지 않습니다)`))return;try{if(!(await fetch(t+"/players-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({names:[e]})})).ok)throw new Error("api");delete i[e],o(),s(`'${e}' 삭제 완료`)}catch(t){s("삭제 실패 — 연결을 확인해 주세요")}return}if(a.target.closest("#btn-add")){const a=e("add-name").value.trim().slice(0,40),n=e("add-line").value.trim();if(!a||!n)return void s("이름과 정보 줄을 모두 입력해 주세요");if(i[a]&&!confirm(`'${a}' 은(는) 이미 있습니다. 덮어쓸까요?`))return;try{if(!(await fetch(t+"/players-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({players:{[a]:{line:n}}})})).ok)throw new Error("api");i[a]={line:n},e("add-name").value="",e("add-line").value="",o(),s(`'${a}' 추가 완료`)}catch(t){s("추가 실패 — 연결을 확인해 주세요")}}}),r();</script>
+<script>"use strict";const e="https://naejeon-balancer-api.karajaku.workers.dev",t=e=>document.getElementById(e),n=e=>String(e).replace(/[&<>"']/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[e])),a=[{keys:["아이언","아"],label:"아이언",color:"#8d8d93"},{keys:["브론즈","브"],label:"브론즈",color:"#a46a48"},{keys:["실버","실"],label:"실버",color:"#9fa8b2"},{keys:["골드","골"],label:"골드",color:"#e6b84c"},{keys:["플래티넘","플래","플"],label:"플래",color:"#3fbda9"},{keys:["에메랄드","에메","에"],label:"에메랄드",color:"#2fbe6e"},{keys:["다이아몬드","다이아","다"],label:"다이아",color:"#5aa7e8"},{keys:["마스터","마"],label:"마스터",color:"#b26be8"},{keys:["그랜드마스터","그마"],label:"그마",color:"#e0564f"},{keys:["챌린저","챌"],label:"챌린저",color:"#f4c874"}],r={"탑":"TOP","정글":"JG","정":"JG","미드":"MID","미":"MID","원딜":"ADC","바텀":"ADC","봇":"ADC","원":"ADC","바":"ADC","서폿":"SUP","서포터":"SUP","서포트":"SUP","폿":"SUP","서":"SUP"};function s(e){const t=String(e).trim().match(/^([가-힣]+)([1-4])?$/);if(!t)return null;const n=a.find(e=>e.keys.includes(t[1]));return n?n.color:null}function o(e){return String(e).trim().split(/\s+/).filter(Boolean).every(e=>{if("올라운더"===e)return!0;let t=e;return t.startsWith("!")?t=t.slice(1):t.length>2&&t.endsWith("불가")&&(t=t.slice(0,-2)),!!r[t]})}const l=(e,t,n)=>[e,t,n].map(e=>String(e).trim()).filter(Boolean).join(" ");let i=null;function c(e){const n=t("toast");n.textContent=e,n.classList.add("show"),clearTimeout(i),i=setTimeout(()=>n.classList.remove("show"),2600)}let d={};async function u(){try{const t=await fetch(e+"/players");if(!t.ok)throw new Error("api");d=(await t.json()).players||{},f()}catch(e){t("list").innerHTML='<div class="empty">서버에 연결하지 못했습니다</div>',t("countline").textContent=""}}function p(e){const t=e.value.trim(),n=t?s(t):null;e.style.color=n||"",e.classList.toggle("bad",!!t&&!n)}function y(e){e.classList.toggle("bad",!o(e.value))}function f(){const e=t("search").value.trim().toLowerCase(),a=Object.keys(d).sort((e,t)=>e.localeCompare(t,"ko")),r=e?a.filter(t=>t.toLowerCase().includes(e)):a;t("countline").textContent=e?`${r.length}명 표시 / 전체 ${a.length}명`:`전체 ${a.length}명 — 명단 읽기에 쓰인 선수가 자동으로 등록됩니다`,a.length?r.length?(t("list").innerHTML=r.map(e=>{const t=function(e,t){const n=String(t||"").trim().split(/\s+/).filter(Boolean);n[0]===e&&n.shift();let a="";const r=[];for(const e of n)a||!s(e)?r.push(e):a=e;return{tier:a,pos:r.join(" ")}}(e,d[e].line);return`\n    <div class="row" data-name="${n(e)}">\n      <input type="text" class="tier" value="${n(t.tier)}" maxlength="10" placeholder="티어">\n      <span class="name" title="${n(e)}">${n(e)}</span>\n      <input type="text" class="pos" value="${n(t.pos)}" maxlength="120" placeholder="올라운더">\n      <button data-save disabled>저장</button>\n      <button data-del class="danger">삭제</button>\n    </div>`}).join(""),document.querySelectorAll("#list .row input.tier").forEach(p)):t("list").innerHTML='<div class="empty">검색 결과가 없습니다</div>':t("list").innerHTML='<div class="empty">저장된 멤버가 없습니다 — 밸런서에서 명단을 읽으면 자동으로 쌓입니다</div>'}function h(e,t){const n=e.value.trim(),a=t.value.trim();return n&&s(n)?o(a)?{tier:n,pos:a||"올라운더"}:(c("포지션을 확인해 주세요 (예: 미드 서폿 !탑 — 비우면 올라운더)"),null):(c("티어를 확인해 주세요 (예: 골4, 다이아1, 마스터)"),null)}t("search").addEventListener("input",f),t("btn-refresh").addEventListener("click",()=>{u(),c("새로고침했습니다")}),t("add-tier").addEventListener("input",e=>p(e.target)),t("add-pos").addEventListener("input",e=>y(e.target)),document.addEventListener("input",e=>{const t=e.target.closest("#list .row");if(!t)return;const n=t.querySelector(".tier"),a=t.querySelector(".pos");p(n),y(a);const r=t.dataset.name,s=l(r,n.value,a.value)!==(d[r]&&d[r].line);t.classList.toggle("changed",s),t.querySelector("[data-save]").disabled=!s}),document.addEventListener("click",async n=>{const a=n.target.closest("#list .row");if(a&&n.target.closest("[data-save]")){const t=a.dataset.name,n=h(a.querySelector(".tier"),a.querySelector(".pos"));if(!n)return;const r=l(t,n.tier,n.pos);try{if(!(await fetch(e+"/players-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({players:{[t]:{line:r}}})})).ok)throw new Error("api");d[t]={line:r},a.classList.remove("changed"),a.querySelector("[data-save]").disabled=!0,c(`'${t}' 저장 완료 (모두에게 반영)`)}catch(e){c("저장 실패 — 연결을 확인해 주세요")}return}if(a&&n.target.closest("[data-del]")){const t=a.dataset.name;if(!confirm(`'${t}' 멤버를 삭제할까요?\n자동완성에서 빠집니다 (경기 기록·랭킹은 지워지지 않습니다)`))return;try{if(!(await fetch(e+"/players-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({names:[t]})})).ok)throw new Error("api");delete d[t],f(),c(`'${t}' 삭제 완료`)}catch(e){c("삭제 실패 — 연결을 확인해 주세요")}return}if(n.target.closest("#btn-add")){const n=t("add-name").value.trim().slice(0,40);if(!n)return void c("이름을 입력해 주세요");const a=h(t("add-tier"),t("add-pos"));if(!a)return;if(d[n]&&!confirm(`'${n}' 은(는) 이미 있습니다. 덮어쓸까요?`))return;const r=l(n,a.tier,a.pos);try{if(!(await fetch(e+"/players-save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({players:{[n]:{line:r}}})})).ok)throw new Error("api");d[n]={line:r},t("add-name").value="",t("add-tier").value="",t("add-pos").value="",p(t("add-tier")),f(),c(`'${n}' 추가 완료`)}catch(e){c("추가 실패 — 연결을 확인해 주세요")}}}),u();</script>
 </body>
 </html>
