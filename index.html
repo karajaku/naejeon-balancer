@@ -126,7 +126,8 @@
   .meter { flex: 1; height: 8px; border-radius: 4px; background: var(--line-soft); overflow: hidden; display: flex; }
   .meter .fb { background: var(--blue); height: 100%; transition: width .3s; }
   .meter .fr { background: var(--red); height: 100%; transition: width .3s; }
-  .diffnote { text-align: center; color: var(--muted); font-size: 12.5px; margin: 0 0 16px; }
+  /* 두 줄(본문 + 세부) 높이로 고정 — 재계산 중 한 줄 문구로 바뀌어도 아래 칸들이 출렁이지 않게 */
+  .diffnote { text-align: center; color: var(--muted); font-size: 12.5px; margin: 0 0 16px; min-height: 36px; }
   .diffnote b { color: var(--gold); font-variant-numeric: tabular-nums; }
 
   /* 대진표: 블루 슬롯 | 라인·유불리 | 레드 슬롯 */
