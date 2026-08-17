@@ -307,6 +307,8 @@
   .calc-doc summary:hover, .calc-doc[open] summary { color: var(--gold); }
   .calc-doc .tip { margin-top: 6px; }
   .diffnote .subnote { font-size: 11px; color: #5a6678; margin-top: 2px; }
+  /* 빌드 시각 표시 — 지금 보는 페이지가 어느 배포본인지 식별용 */
+  .buildstamp { text-align: center; color: #4d5769; font-size: 11px; margin-top: 24px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   /* 대형 화면(QHD·4K, OS 배율 100%)에서 UI가 작아 보이지 않게 자동 확대 */
   @media (min-width: 2400px) { body { zoom: 1.25; } }
@@ -456,6 +458,7 @@
       </div>
     </section>
   </div>
+  <div class="buildstamp">빌드 2026-08-18 00:02</div>
 </div>
 <div class="toast" id="toast"></div>
 <div class="lanemenu" id="lanemenu"></div>

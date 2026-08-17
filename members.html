@@ -126,6 +126,7 @@
     transition: opacity .2s, transform .2s; max-width: 90vw;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .buildstamp { text-align: center; color: var(--dim); font-size: 11px; margin-top: 24px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -172,6 +173,7 @@
       <button class="primary" id="btn-add">추가</button>
     </div>
   </div>
+  <div class="buildstamp">빌드 2026-08-18 00:02</div>
 </div>
 <div class="overlay" id="overlay" style="display:none">
   <div class="modal">
