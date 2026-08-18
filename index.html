@@ -209,10 +209,12 @@
   .card .poslist { color: #4d5769; } /* 명단보다 한 단계 더 흐리게 — 배치된 라인(흰 볼드)이 또렷이 구분되도록 */
   .card .poslist .pl-cur { color: #eef2f9; font-weight: 700; }
   .card .poslist .pl-off { color: var(--danger); font-weight: 700; }
-  /* 숙련 상태 태그는 카드 바깥쪽 끝에 — 1팀은 왼쪽 끝, 2팀은 오른쪽 끝(거울 대칭).
-     내용과 떨어져 모서리에 붙으므로 포지션 목록의 수식어로 읽히지 않고,
-     세로로 훑으면 팀 전체의 주/부/오프 상태가 열처럼 읽힌다 */
+  /* 숙련 상태 태그는 카드 바깥쪽 모서리에 고정 — 1팀은 왼쪽 끝, 2팀은 오른쪽 끝(거울 대칭).
+     내용과 여백으로 떨어져 있어 포지션 목록의 수식어로 읽히지 않고,
+     세로로 훑으면 팀 전체의 주/부/오프 상태가 열처럼 읽힌다.
+     주의: 1팀 카드는 row-reverse라 auto 마진 방향도 반대(margin-right)여야 왼쪽 모서리에 붙는다 */
   .card .fit { margin-left: auto; flex-shrink: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+  .slot[data-slot^="B:"] .card .fit { margin-left: 0; margin-right: auto; }
   .fit.main { color: var(--gold); }
   .fit.sub2 { color: var(--muted); }
   .fit.offrole { color: var(--danger); }
@@ -459,7 +461,7 @@
       </div>
     </section>
   </div>
-  <div class="buildstamp">빌드 2026-08-19 00:21</div>
+  <div class="buildstamp">빌드 2026-08-19 00:34</div>
 </div>
 <div class="toast" id="toast"></div>
 <div class="lanemenu" id="lanemenu"></div>
