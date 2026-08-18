@@ -209,10 +209,10 @@
   .card .poslist { color: #4d5769; } /* 명단보다 한 단계 더 흐리게 — 배치된 라인(흰 볼드)이 또렷이 구분되도록 */
   .card .poslist .pl-cur { color: #eef2f9; font-weight: 700; }
   .card .poslist .pl-off { color: var(--danger); font-weight: 700; }
-  /* 숙련 상태 태그는 양 팀 모두 읽는 순서의 끝(카드 오른쪽 끝)에 — 앞에 붙이면
-     "부 탑<정글…"처럼 포지션 목록의 수식어로 잘못 읽힌다 */
+  /* 숙련 상태 태그는 카드 바깥쪽 끝에 — 1팀은 왼쪽 끝, 2팀은 오른쪽 끝(거울 대칭).
+     내용과 떨어져 모서리에 붙으므로 포지션 목록의 수식어로 읽히지 않고,
+     세로로 훑으면 팀 전체의 주/부/오프 상태가 열처럼 읽힌다 */
   .card .fit { margin-left: auto; flex-shrink: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
-  .slot[data-slot^="B:"] .card .fit { order: -1; margin-left: 0; } /* row-reverse에서 order -1 = 오른쪽 끝 */
   .fit.main { color: var(--gold); }
   .fit.sub2 { color: var(--muted); }
   .fit.offrole { color: var(--danger); }
@@ -459,7 +459,7 @@
       </div>
     </section>
   </div>
-  <div class="buildstamp">빌드 2026-08-19 00:03</div>
+  <div class="buildstamp">빌드 2026-08-19 00:21</div>
 </div>
 <div class="toast" id="toast"></div>
 <div class="lanemenu" id="lanemenu"></div>
